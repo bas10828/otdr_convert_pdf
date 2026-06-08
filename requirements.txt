@@ -1,0 +1,3 @@
+pyotdr>=2.1.1
+reportlab>=4.0.0
+matplotlib>=3.7.0

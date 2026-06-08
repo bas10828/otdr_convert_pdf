@@ -1,5 +1,6 @@
 """
 OTDR PDF Generator — double-click to run (no console)
+Auto-installs required packages on first run.
 """
 import os
 import io
@@ -9,6 +10,86 @@ import subprocess
 import sys
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+
+REQUIRED = ["pyotdr", "reportlab", "matplotlib"]
+
+def _check_and_install():
+    """Check for missing packages; install them with a progress window if needed."""
+    missing = []
+    for pkg in REQUIRED:
+        try:
+            __import__(pkg)
+        except ImportError:
+            missing.append(pkg)
+
+    if not missing:
+        return True
+
+    # Show install window
+    win = tk.Tk()
+    win.title("OTDR PDF Generator — Setup")
+    win.resizable(False, False)
+    win.configure(bg='#F0F4FF')
+
+    tk.Label(win, text="กำลัง install dependencies...",
+             font=('Helvetica', 12, 'bold'), bg='#1565C0', fg='white',
+             padx=16, pady=10).pack(fill='x')
+
+    tk.Label(win, text=f"ต้องการ: {', '.join(missing)}",
+             font=('Helvetica', 9), bg='#F0F4FF', pady=6).pack()
+
+    status_var = tk.StringVar(value="เริ่ม install...")
+    tk.Label(win, textvariable=status_var, font=('Courier', 8),
+             bg='#F0F4FF', wraplength=380, justify='left',
+             padx=12).pack(fill='x')
+
+    pbar = ttk.Progressbar(win, mode='indeterminate', length=380)
+    pbar.pack(padx=12, pady=(4, 12))
+    pbar.start(10)
+
+    win.update()
+    win.geometry(f"+{win.winfo_screenwidth()//2-200}+{win.winfo_screenheight()//2-100}")
+
+    success = [True]
+
+    def do_install():
+        try:
+            for pkg in missing:
+                status_var.set(f"pip install {pkg} ...")
+                win.update()
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", pkg, "--quiet"],
+                    capture_output=True, text=True
+                )
+                if result.returncode != 0:
+                    success[0] = False
+                    status_var.set(f"Error: {result.stderr[:200]}")
+                    win.update()
+                    return
+            status_var.set("เสร็จแล้ว!")
+            win.update()
+        except Exception as e:
+            success[0] = False
+            status_var.set(f"Error: {e}")
+            win.update()
+        finally:
+            pbar.stop()
+            win.after(800, win.destroy)
+
+    threading.Thread(target=do_install, daemon=True).start()
+    win.mainloop()
+
+    if not success[0]:
+        tk.Tk().withdraw()
+        messagebox.showerror("Install Failed",
+            f"ไม่สามารถ install ได้\nลองรัน cmd แล้วพิมพ์:\n"
+            f"pip install {' '.join(missing)}")
+        sys.exit(1)
+
+    return True
+
+
+_check_and_install()
 
 # ── lazy imports (may take a moment on first run) ──
 def _import_heavy():
