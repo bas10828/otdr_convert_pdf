@@ -276,14 +276,15 @@ def build_pdf(sor_files, output_pdf, project_name, progress_cb):
     story.append(Spacer(1, 10*mm))
 
     # Summary table
-    summary_rows = [['Fiber', 'Wavelength', 'Fiber Length', 'Test Range', 'Pulse', 'Avg Time', 'Total Loss (dB)']]
+    summary_rows = [['Fiber', 'File', 'Wavelength', 'Fiber Length', 'Pulse', 'Avg Time', 'Total Loss (dB)']]
     all_data = []
     for i, fpath in enumerate(sor_files):
         progress_cb(f"Reading {i+1}/{len(sor_files)}: {os.path.basename(fpath)}")
         results, tracedata = parse_sor(fpath)
         all_data.append((results, tracedata))
+        fname = os.path.basename(fpath)
         if results is None:
-            summary_rows.append([f'#{i+1:02d}', 'ERROR', '-', '-', '-', '-', '-'])
+            summary_rows.append([f'#{i+1:02d}', fname, 'ERROR', '-', '-', '-', '-'])
             continue
         gp = results.get('GenParams', {})
         fp = results.get('FxdParams', {})
@@ -291,15 +292,15 @@ def build_pdf(sor_files, output_pdf, project_name, progress_cb):
         total_loss = ke.get('Summary', {}).get('total loss', 0.0)
         summary_rows.append([
             f'#{i+1:02d}',
+            fname,
             gp.get('wavelength', '-'),
             get_fiber_length(ke),
-            f"{fp.get('acquisition range distance', '-')} m",
             fp.get('pulse width', '-'),
             fp.get('averaging time', '-'),
             f'{total_loss:.3f}' if isinstance(total_loss, float) else str(total_loss),
         ])
 
-    summary_tbl = Table(summary_rows, colWidths=[14*mm, 20*mm, 38*mm, 20*mm, 18*mm, 18*mm, 24*mm], repeatRows=1)
+    summary_tbl = Table(summary_rows, colWidths=[12*mm, 30*mm, 18*mm, 36*mm, 16*mm, 16*mm, 24*mm], repeatRows=1)
     summary_tbl.setStyle(TBL_HEADER)
     story.append(summary_tbl)
     story.append(PageBreak())
