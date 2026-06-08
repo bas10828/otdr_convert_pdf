@@ -320,7 +320,7 @@ def build_pdf(sor_files, output_pdf, project_name, progress_cb):
         if '(' in dt:
             dt = dt.split('(')[0].strip()
 
-        block.append(Paragraph(f"Fiber #{fiber_num:02d}  —  {wav}  |  {dt}", style_fhdr))
+        block.append(Paragraph(f"Fiber #{fiber_num:02d}  —  {wav}  |  {fname}  |  {dt}", style_fhdr))
         block.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#1565C0')))
         block.append(Spacer(1, 1*mm))
 
