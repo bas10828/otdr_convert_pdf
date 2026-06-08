@@ -1,0 +1,4 @@
+*.sor
+*.pdf
+__pycache__/
+*.pyc
