@@ -470,13 +470,24 @@ class App(tk.Tk):
                                  padx=20, pady=8)
         self.btn_gen.pack(pady=8)
 
-        self.btn_open = tk.Button(self, text="🗂  เปิด PDF",
+        frm_btns = tk.Frame(self, bg='#F0F4FF')
+        frm_btns.pack(pady=(0, 12))
+
+        self.btn_open = tk.Button(frm_btns, text="🗂  เปิด PDF",
                                   command=self.open_pdf,
                                   bg='#E65100', fg='white',
                                   font=('Helvetica', 10, 'bold'),
                                   relief='flat', cursor='hand2',
                                   padx=16, pady=6, state='disabled')
-        self.btn_open.pack(pady=(0, 12))
+        self.btn_open.pack(side='left', padx=(0, 8))
+
+        self.btn_folder = tk.Button(frm_btns, text="📂  เปิดโฟลเดอร์",
+                                    command=self.open_folder,
+                                    bg='#6A1B9A', fg='white',
+                                    font=('Helvetica', 10, 'bold'),
+                                    relief='flat', cursor='hand2',
+                                    padx=16, pady=6, state='disabled')
+        self.btn_folder.pack(side='left')
 
         self._sor_files = []
         self._output_pdf = None
@@ -536,6 +547,12 @@ class App(tk.Tk):
         if self._output_pdf and os.path.exists(self._output_pdf):
             os.startfile(self._output_pdf)
 
+    def open_folder(self):
+        if self._output_pdf:
+            folder = os.path.dirname(self._output_pdf)
+            if os.path.exists(folder):
+                subprocess.Popen(f'explorer /select,"{self._output_pdf}"')
+
     def generate(self):
         if not self._sor_files:
             messagebox.showwarning("ยังไม่ได้เลือก", "เลือกโฟลเดอร์หรือไฟล์ .sor ก่อน")
@@ -546,6 +563,7 @@ class App(tk.Tk):
 
         self.btn_gen.config(state='disabled')
         self.btn_open.config(state='disabled')
+        self.btn_folder.config(state='disabled')
         self.pbar.start(10)
 
         def run():
@@ -571,6 +589,7 @@ class App(tk.Tk):
         self.pbar.stop()
         self.btn_gen.config(state='normal')
         self.btn_open.config(state='normal')
+        self.btn_folder.config(state='normal')
         self.progress_var.set(f"เสร็จแล้ว → {os.path.basename(self._output_pdf)}")
         messagebox.showinfo("สำเร็จ", f"PDF สร้างเสร็จแล้ว\n{self._output_pdf}")
 
