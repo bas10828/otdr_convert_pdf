@@ -1,5 +1,5 @@
 """
-OTDR PDF Generator — double-click to run (no console)
+NDT OTDR Report — double-click to run (no console)
 Auto-installs required packages on first run.
 """
 import os
@@ -12,6 +12,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
 REQUIRED = ["pyotdr", "reportlab", "matplotlib"]
+LOGO_PATH = r"C:\Users\This PC\Desktop\THEKKBox\netdoi\logo\logo.jpg"
 
 def _check_and_install():
     """Check for missing packages; install them with a progress window if needed."""
@@ -27,7 +28,7 @@ def _check_and_install():
 
     # Show install window
     win = tk.Tk()
-    win.title("OTDR PDF Generator — Setup")
+    win.title("NDT OTDR Report — Setup")
     win.resizable(False, False)
     win.configure(bg='#F0F4FF')
 
@@ -208,9 +209,51 @@ def build_pdf(sor_files, output_pdf, project_name, progress_cb):
     )
 
     W, H = A4
+
+    from reportlab.lib.utils import ImageReader
+
+    def _draw_logo_header(canvas, doc):
+        if os.path.exists(LOGO_PATH):
+            canvas.saveState()
+            try:
+                ir = ImageReader(LOGO_PATH)
+                iw, ih = ir.getSize()
+                logo_w = 28 * mm
+                logo_h = min(logo_w * ih / iw, 10 * mm)
+                x = doc.pagesize[0] - doc.rightMargin - logo_w
+                y = doc.pagesize[1] - logo_h - 4 * mm
+                canvas.drawImage(LOGO_PATH, x, y, width=logo_w, height=logo_h,
+                                 preserveAspectRatio=True, mask='auto')
+                canvas.setFont('Helvetica-Bold', 7)
+                canvas.setFillColor(colors.HexColor('#1565C0'))
+                cx = x + logo_w / 2
+                canvas.drawCentredString(cx, y - 8, 'NDT OTDR Report')
+            except Exception:
+                pass
+            canvas.restoreState()
+
+    def _draw_first_page(canvas, doc):
+        _draw_logo_header(canvas, doc)
+        canvas.saveState()
+        canvas.setFont('Helvetica', 7)
+        canvas.setFillColor(colors.HexColor('#AAAAAA'))
+        canvas.drawCentredString(doc.pagesize[0] / 2,
+                                 doc.bottomMargin / 2,
+                                 f'Page {doc.page}')
+        canvas.restoreState()
+
+    def _draw_later_pages(canvas, doc):
+        canvas.saveState()
+        canvas.setFont('Helvetica', 7)
+        canvas.setFillColor(colors.HexColor('#AAAAAA'))
+        canvas.drawCentredString(doc.pagesize[0] / 2,
+                                 doc.bottomMargin / 2,
+                                 f'Page {doc.page}')
+        canvas.restoreState()
+
     doc = SimpleDocTemplate(output_pdf, pagesize=A4,
                             leftMargin=15*mm, rightMargin=15*mm,
-                            topMargin=15*mm, bottomMargin=15*mm)
+                            topMargin=18*mm, bottomMargin=15*mm)
 
     TBL_HEADER = TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1565C0')),
@@ -258,22 +301,64 @@ def build_pdf(sor_files, output_pdf, project_name, progress_cb):
         ('BOTTOMPADDING', (0,0), (-1,-1), 2),
     ])
 
-    style_title  = ParagraphStyle('t', fontName='Helvetica-Bold', fontSize=18, alignment=TA_CENTER, spaceAfter=4)
-    style_sub    = ParagraphStyle('s', fontName='Helvetica', fontSize=11, alignment=TA_CENTER, spaceAfter=2, textColor=colors.grey)
-    style_fhdr   = ParagraphStyle('fh', fontName='Helvetica-Bold', fontSize=10, spaceBefore=0, spaceAfter=1, textColor=colors.HexColor('#0D47A1'))
+    style_title  = ParagraphStyle('t', fontName='Helvetica-Bold', fontSize=22, alignment=TA_CENTER, spaceAfter=4, textColor=colors.HexColor('#0D47A1'))
+    style_sub    = ParagraphStyle('s', fontName='Helvetica', fontSize=11, alignment=TA_CENTER, spaceAfter=2, textColor=colors.HexColor('#555555'))
+    style_sub2   = ParagraphStyle('s2', fontName='Helvetica', fontSize=9, alignment=TA_CENTER, spaceAfter=1, textColor=colors.HexColor('#888888'))
+    style_fhdr   = ParagraphStyle('fh', fontName='Helvetica-Bold', fontSize=10, spaceBefore=0, spaceAfter=1, textColor=colors.white)
     style_evhdr  = ParagraphStyle('eh', fontName='Helvetica-Bold', fontSize=7.5, textColor=colors.HexColor('#1565C0'), spaceBefore=1, spaceAfter=1)
+
+    # pre-read date from first file for cover
+    cover_dt = '-'
+    if sor_files:
+        try:
+            _r, _ = parse_sor(sor_files[0])
+            if _r:
+                raw = _r.get('FxdParams', {}).get('date/time', '-') or '-'
+                cover_dt = raw.split('(')[0].strip() if '(' in raw else raw
+        except Exception:
+            pass
 
     story = []
 
     # ── Cover ──
     story.append(Spacer(1, 30*mm))
-    story.append(Paragraph("OTDR TEST REPORT", style_title))
+
+    # Blue banner
+    banner_data = [[Paragraph("OTDR REPORT", style_title)]]
+    banner_tbl = Table(banner_data, colWidths=[W - 30*mm])
+    banner_tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#0D47A1')),
+        ('TOPPADDING',    (0,0), (-1,-1), 10),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 10),
+        ('LEFTPADDING',   (0,0), (-1,-1), 8),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 8),
+    ]))
+    story.append(banner_tbl)
+    story.append(Spacer(1, 6*mm))
+
+    # Info box
+    info_cover = [
+        [Paragraph("<b>Test Date</b>", ParagraphStyle('lb', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#1565C0'))),
+         Paragraph(cover_dt, ParagraphStyle('vb', fontName='Helvetica', fontSize=10))],
+        [Paragraph("<b>Total Fibers</b>", ParagraphStyle('lb', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#1565C0'))),
+         Paragraph(str(len(sor_files)), ParagraphStyle('vb', fontName='Helvetica', fontSize=10))],
+    ]
+    cover_info_tbl = Table(info_cover, colWidths=[35*mm, 120*mm])
+    cover_info_tbl.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F0F4FF')),
+        ('ROWBACKGROUNDS', (0,0), (-1,-1), [colors.white, colors.HexColor('#EEF4FF')]),
+        ('GRID', (0,0), (-1,-1), 0.3, colors.HexColor('#C5CAE9')),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ('LEFTPADDING', (0,0), (-1,-1), 8),
+    ]))
+    story.append(cover_info_tbl)
+    story.append(Spacer(1, 6*mm))
+    story.append(HRFlowable(width="80%", thickness=1, color=colors.HexColor('#C5CAE9'), hAlign='CENTER'))
     story.append(Spacer(1, 3*mm))
-    story.append(HRFlowable(width="80%", thickness=2, color=colors.HexColor('#1565C0'), hAlign='CENTER'))
-    story.append(Spacer(1, 5*mm))
-    story.append(Paragraph(f"Project: {project_name}", style_sub))
-    story.append(Paragraph(f"Total Fibers: {len(sor_files)}", style_sub))
-    story.append(Spacer(1, 10*mm))
+    story.append(Paragraph("Powered by Netdoi Technology", style_sub2))
+    story.append(Spacer(1, 8*mm))
 
     # Summary table
     summary_rows = [['Fiber', 'File', 'Wavelength', 'Fiber Length', 'Pulse', 'Avg Time', 'Total Loss (dB)']]
@@ -317,12 +402,19 @@ def build_pdf(sor_files, output_pdf, project_name, progress_cb):
         ke = results.get('KeyEvents', {})
 
         wav = gp.get('wavelength', '-')
-        dt  = fp.get('date/time', '-')
+        dt  = fp.get('date/time', '-') or '-'
         if '(' in dt:
             dt = dt.split('(')[0].strip()
 
-        block.append(Paragraph(f"Fiber #{fiber_num:02d}  —  {wav}  |  {fname}  |  {dt}", style_fhdr))
-        block.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#1565C0')))
+        hdr_data = [[Paragraph(f"Fiber #{fiber_num:02d}  —  {wav}  |  {fname}  |  {dt}", style_fhdr)]]
+        hdr_tbl = Table(hdr_data, colWidths=[W - 30*mm])
+        hdr_tbl.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#1565C0')),
+            ('TOPPADDING',    (0,0), (-1,-1), 5),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+            ('LEFTPADDING',   (0,0), (-1,-1), 8),
+        ]))
+        block.append(hdr_tbl)
         block.append(Spacer(1, 1*mm))
 
         res_str = (f"{fp.get('resolution',0):.5f} m"
@@ -381,7 +473,7 @@ def build_pdf(sor_files, output_pdf, project_name, progress_cb):
                 story.append(Spacer(1, 3*mm))
 
     progress_cb("Writing PDF...")
-    doc.build(story)
+    doc.build(story, onFirstPage=_draw_first_page, onLaterPages=_draw_later_pages)
 
 
 # ══════════════════════════════════════════════
@@ -391,14 +483,14 @@ def build_pdf(sor_files, output_pdf, project_name, progress_cb):
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("OTDR PDF Generator")
+        self.title("NDT OTDR Report")
         self.resizable(False, False)
         self.configure(bg='#F0F4FF')
 
         PAD = dict(padx=12, pady=6)
 
         # ── header ──
-        tk.Label(self, text="OTDR PDF Generator",
+        tk.Label(self, text="NDT OTDR Report",
                  font=('Helvetica', 16, 'bold'), bg='#1565C0', fg='white',
                  anchor='w', padx=12, pady=10).pack(fill='x')
 
@@ -448,7 +540,7 @@ class App(tk.Tk):
         frm_proj = tk.LabelFrame(self, text=" Project Name ", bg='#F0F4FF',
                                  font=('Helvetica', 9, 'bold'), padx=8, pady=6)
         frm_proj.pack(fill='x', **PAD)
-        self.proj_var = tk.StringVar(value="OTDR Test")
+        self.proj_var = tk.StringVar(value="OTDR")
         tk.Entry(frm_proj, textvariable=self.proj_var, font=('Helvetica', 10),
                  width=40).pack(fill='x')
 
