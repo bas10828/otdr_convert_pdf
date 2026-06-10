@@ -239,7 +239,7 @@ def build_pdf(sor_files, output_pdf, project_name, progress_cb):
         canvas.setFillColor(colors.HexColor('#AAAAAA'))
         canvas.drawCentredString(doc.pagesize[0] / 2,
                                  doc.bottomMargin / 2,
-                                 f'Page {doc.page}')
+                                 'Powered by Netdoi Technology')
         canvas.restoreState()
 
     def _draw_later_pages(canvas, doc):
@@ -248,12 +248,12 @@ def build_pdf(sor_files, output_pdf, project_name, progress_cb):
         canvas.setFillColor(colors.HexColor('#AAAAAA'))
         canvas.drawCentredString(doc.pagesize[0] / 2,
                                  doc.bottomMargin / 2,
-                                 f'Page {doc.page}')
+                                 'Powered by Netdoi Technology')
         canvas.restoreState()
 
     doc = SimpleDocTemplate(output_pdf, pagesize=A4,
                             leftMargin=15*mm, rightMargin=15*mm,
-                            topMargin=18*mm, bottomMargin=15*mm)
+                            topMargin=8*mm, bottomMargin=15*mm)
 
     TBL_HEADER = TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1565C0')),
@@ -321,43 +321,10 @@ def build_pdf(sor_files, output_pdf, project_name, progress_cb):
     story = []
 
     # ── Cover ──
-    story.append(Spacer(1, 30*mm))
+    story.append(Spacer(1, 0))
 
-    # Blue banner
-    banner_data = [[Paragraph("OTDR REPORT", style_title)]]
-    banner_tbl = Table(banner_data, colWidths=[W - 30*mm])
-    banner_tbl.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#0D47A1')),
-        ('TOPPADDING',    (0,0), (-1,-1), 10),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 10),
-        ('LEFTPADDING',   (0,0), (-1,-1), 8),
-        ('RIGHTPADDING',  (0,0), (-1,-1), 8),
-    ]))
-    story.append(banner_tbl)
     story.append(Spacer(1, 6*mm))
 
-    # Info box
-    info_cover = [
-        [Paragraph("<b>Test Date</b>", ParagraphStyle('lb', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#1565C0'))),
-         Paragraph(cover_dt, ParagraphStyle('vb', fontName='Helvetica', fontSize=10))],
-        [Paragraph("<b>Total Fibers</b>", ParagraphStyle('lb', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#1565C0'))),
-         Paragraph(str(len(sor_files)), ParagraphStyle('vb', fontName='Helvetica', fontSize=10))],
-    ]
-    cover_info_tbl = Table(info_cover, colWidths=[35*mm, 120*mm])
-    cover_info_tbl.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F0F4FF')),
-        ('ROWBACKGROUNDS', (0,0), (-1,-1), [colors.white, colors.HexColor('#EEF4FF')]),
-        ('GRID', (0,0), (-1,-1), 0.3, colors.HexColor('#C5CAE9')),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('TOPPADDING', (0,0), (-1,-1), 5),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
-        ('LEFTPADDING', (0,0), (-1,-1), 8),
-    ]))
-    story.append(cover_info_tbl)
-    story.append(Spacer(1, 6*mm))
-    story.append(HRFlowable(width="80%", thickness=1, color=colors.HexColor('#C5CAE9'), hAlign='CENTER'))
-    story.append(Spacer(1, 3*mm))
-    story.append(Paragraph("Powered by Netdoi Technology", style_sub2))
     story.append(Spacer(1, 8*mm))
 
     # Summary table
@@ -385,6 +352,16 @@ def build_pdf(sor_files, output_pdf, project_name, progress_cb):
             f'{total_loss:.3f}' if isinstance(total_loss, float) else str(total_loss),
         ])
 
+    style_sumhdr = ParagraphStyle('sh', fontName='Helvetica-Bold', fontSize=13,
+                                   textColor=colors.HexColor('#0D47A1'), spaceAfter=2)
+    style_summeta = ParagraphStyle('sm', fontName='Helvetica', fontSize=8,
+                                    textColor=colors.HexColor('#555555'), spaceAfter=4)
+    story.append(Paragraph("Fiber Optic Test Results", style_sumhdr))
+    story.append(Paragraph(
+        f"Test Date: {cover_dt}  &nbsp;&nbsp;|&nbsp;&nbsp;  Total Fibers: {len(sor_files)}",
+        style_summeta))
+    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#1565C0')))
+    story.append(Spacer(1, 2*mm))
     summary_tbl = Table(summary_rows, colWidths=[12*mm, 30*mm, 18*mm, 36*mm, 16*mm, 16*mm, 24*mm], repeatRows=1)
     summary_tbl.setStyle(TBL_HEADER)
     story.append(summary_tbl)
@@ -643,7 +620,7 @@ class App(tk.Tk):
         if self._output_pdf:
             folder = os.path.dirname(self._output_pdf)
             if os.path.exists(folder):
-                subprocess.Popen(f'explorer /select,"{self._output_pdf}"')
+                os.startfile(folder)
 
     def generate(self):
         if not self._sor_files:
